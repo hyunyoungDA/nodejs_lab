@@ -1,0 +1,14 @@
+{
+  "name": "product-monitor",
+  "version": "1.0.0",
+  "description": "상품 모니터링 자동화 프로그램",
+  "main": "monitor.js",
+  "scripts": {
+    "start": "node monitor.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.5.0",
+    "readline-sync": "^1.4.10"
+  }
+}
