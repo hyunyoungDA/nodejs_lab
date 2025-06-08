@@ -19,12 +19,12 @@
 * **백엔드**:
     * Node.js
     * Sequelize ORM (MySQL)
-<br>
+
 * **프론트엔드**:
     * HTML5, CSS3, JavaScript
     * Nunjucks (템플릿 엔진)
     * Chart.js (데이터 시각화)
-<br>
+
 * **데이터베이스**:
     * MySQL
 
