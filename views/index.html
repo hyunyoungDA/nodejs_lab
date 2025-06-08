@@ -24,45 +24,47 @@
 
         <section class="profile-list-section">
             <h2>저장된 프로파일 목록</h2>
-            <p id="current_profile_name">현재 선택된 프로파일: 없음</p>
             <div id="profile_list_container">
                 <ul id="profile_list">
-                    {% if tableList and tableList.length > 0 %}
-                        {% for table in tableList %}
-                            <li data-table-name="{{ table }}">
-                                <span class="table-name">{{ table }}</span>
-                                <div class="button-group">
-                                    <button class="button secondary view-profile" data-table-name="{{ table }}">조회</button>
-                                    <button class="button danger delete-profile" data-table-name="{{ table }}">삭제</button>
-                                </div>
-                            </li>
-                        {% endfor %}
+                    {% for table in tableList %}
+                        <li data-table-name="{{ table }}">
+                            <span class="table-name">{{ table }}</span>
+                            <div class="button-group">
+                                <button class="button secondary view-profile" data-table-name="{{ table }}">조회</button>
+                                <button class="button danger delete-profile" data-table-name="{{ table }}">삭제</button>
+                            </div>
+                        </li>
                     {% else %}
-                        <li class="no-profiles">저장된 프로파일이 없습니다.</li>
-                    {% endif %}
+                        <li>저장된 프로파일이 없습니다.</li>
+                    {% endfor %}
                 </ul>
-                <p id="list_status" class="status-message"></p>
             </div>
         </section>
 
         <hr>
 
-        <section class="chart-section">
+        <section id="chart_section">
             <h2>프로파일 차트</h2>
-            <div id="chart_controls" class="hidden"> <div class="filter-options">
-                    <label for="chart_type">차트 종류:</label>
-                    <select id="chart_type">
-                        <option value="bar">막대 차트 (Bar)</option>
-                        <option value="line">선 차트 (Line)</option>
-                        <option value="polarArea">극좌표 차트 (Polar Area)</option>
-                    </select>
+            <p>현재 프로파일: <span id="current_profile_name">선택되지 않음</span></p>
 
-                    <label for="group_by">집계 기준:</label>
-                    <select id="group_by">
-                        <option value="none">전체 (None)</option>
-                        <option value="core">Core별</option>
-                        <option value="task">Task별</option>
-                    </select>
+            <div id="chart_controls" class="hidden">
+                <div class="chart-options">
+                    <div>
+                        <label for="chart_type">차트 유형:</label>
+                        <select id="chart_type">
+                            <option value="bar">막대 그래프</option>
+                            <option value="line">선 그래프</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="group_by">그룹화:</label>
+                        <select id="group_by">
+                            <option value="none">그룹화 안함</option>
+                            <option value="core">Core별</option>
+                            <option value="task">Task별</option>
+                        </select>
+                    </div>
 
                     <div id="core_select_container" class="hidden">
                         <label for="select_core">Core 선택:</label>
@@ -82,10 +84,31 @@
             </div>
             <p id="chart_status" class="status-message"></p>
         </section>
+
+        <hr>
+
+        <section id="stats_section" class="hidden">
+            <h2>통계 분석</h2>
+            <label for="stat_type">통계 유형:</label>
+            <select id="stat_type">
+                <option value="overall">전체 통계</option>
+                <option value="core">Core별 통계</option>
+                <option value="task">Task별 통계</option>
+            </select>
+            <p id="stat_status" class="status-message"></p>
+
+            <div id="overall_stats" class="hidden">
+                </div>
+
+            <ul id="core_stats_list" class="hidden">
+                </ul>
+
+            <ul id="task_stats_list" class="hidden">
+                </ul>
+        </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script src="/main.js"></script>
 </body>
 </html>
