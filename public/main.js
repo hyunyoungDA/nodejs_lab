@@ -1,18 +1,9 @@
-// public/main.js
-
-// Chart.js Datalabels 플러그인 임포트 (번들링 환경일 경우)
-// 만약 HTML에서 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
-// 와 같이 로드하고 있다면 이 import 문은 필요 없습니다.
-// import ChartDataLabels from 'chartjs-plugin-datalabels'; // <-- 필요시 추가, 아니면 제거
-
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. DOM 요소 가져오기
+    
     const profileForm = document.getElementById('profile_form');
     const fileInput = document.getElementById('profile_file_input');
     const uploadStatus = document.getElementById('upload_status');
-    const profileListContainer = document.getElementById('profile_list_container'); // ul의 부모 div
-    const profileListUl = document.getElementById('profile_list'); // ul 요소
-    const listStatus = document.getElementById('list_status');
+    const profileListUl = document.getElementById('profile_list');
 
     const currentProfileNameSpan = document.getElementById('current_profile_name');
     const chartControls = document.getElementById('chart_controls');
@@ -23,406 +14,341 @@ document.addEventListener('DOMContentLoaded', () => {
     const taskSelectContainer = document.getElementById('task_select_container');
     const selectTask = document.getElementById('select_task');
     const updateChartButton = document.getElementById('update_chart_button');
+
     const profilerChartCanvas = document.getElementById('profiler_chart');
     const chartStatus = document.getElementById('chart_status');
 
-    let currentChart = null; // 현재 Chart.js 인스턴스를 저장할 변수
-    let currentProfileData = []; // 현재 조회된 프로파일 데이터를 저장할 변수
-    let currentProfileTableName = null; // 현재 선택된 프로파일의 테이블 이름
+    // 통계 관련 DOM 요소
+    const statsSection = document.getElementById('stats_section');
+    const statTypeSelect = document.getElementById('stat_type');
+    const statStatus = document.getElementById('stat_status'); // 통계 상태 메시지
+    const overallStatsDiv = document.getElementById('overall_stats');
+    const coreStatsList = document.getElementById('core_stats_list');
+    const taskStatsList = document.getElementById('task_stats_list');
 
-    // 2. 함수 정의
+    let profilerChart; // Chart.js 인스턴스를 저장할 변수
+    let currentProfileData = []; // 현재 로드된 프로파일 데이터 (차트 및 통계에 사용)
+    let currentTableName = ''; // 현재 선택된 테이블 이름
 
-    // 파일 업로드 처리 함수
+    // 프로파일 업로드 처리
     profileForm.addEventListener('submit', async (event) => {
-        event.preventDefault(); // 폼 기본 제출 동작 방지
+        event.preventDefault();
 
         const files = fileInput.files;
         if (files.length === 0) {
             uploadStatus.textContent = '파일을 선택해주세요.';
-            uploadStatus.className = 'status-message error';
+            uploadStatus.className = 'status-message info';
             return;
         }
 
-        uploadStatus.textContent = '파일을 업로드하는 중...';
-        uploadStatus.className = 'status-message';
+        const allProfilesData = []; // [{ tableName: 'xxx', data: [{core, task, usaged}, ...]}, ...]
 
-        const fileDataArray = []; // 서버로 보낼 파일 데이터 배열
-
-        try {
-            for (const file of files) {
-                const text = await file.text(); // 파일 내용을 텍스트로 읽기
-                // 줄바꿈으로 분리, 공백 제거, 빈 줄 제거
-                const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-                if (lines.length === 0) {
-                    throw new Error(`${file.name}: 파일 내용이 비어있습니다.`);
-                }
-
-                // 파일 이름에서 확장자 제거 및 소문자 변환 (테이블 이름으로 사용)
-                let fileNameWithoutExtension = file.name;
-                const lastDotIndex = fileNameWithoutExtension.lastIndexOf('.');
-                if (lastDotIndex !== -1 && lastDotIndex > 0) {
-                    fileNameWithoutExtension = fileNameWithoutExtension.substring(0, lastDotIndex);
-                }
-                const tableName = fileNameWithoutExtension.toLowerCase(); // 이 tableName은 이미 정제된 상태
-
-                const parsedRows = [];
-                for (let i = 1; i < lines.length; i++) { // 첫 번째 줄은 헤더이므로 건너뜜
-                    const parts = lines[i].split(/\s+/).map(part => part.trim()); // 공백으로 분리
-                    if (parts.length >= 3) { // 최소한 core, task, usaged가 있는지 확인
-                        const core = parts[0];
-                        const task = parts[1];
-                        const usaged = parseInt(parts[2], 10); // usaged는 숫자로 변환
-
-                        if (!isNaN(usaged)) { // usaged가 유효한 숫자인지 확인
-                            parsedRows.push({ core, task, usaged });
-                        } else {
-                            console.warn(`"${file.name}" 파일에서 유효하지 않은 Usaged 값 발견: ${parts[2]} (줄: ${i + 1})`);
-                        }
-                    } else {
-                        console.warn(`"${file.name}" 파일에서 파싱할 수 없는 줄 발견 (컬럼 부족): "${lines[i]}" (줄: ${i + 1})`);
-                    }
-                }
-
-                // 서버의 createDynamicTable은 fileData[0][0]을 테이블 이름으로,
-                // fileData.slice(1)을 [core, task, usaged] 배열로 기대합니다.
-                const dataToSend = [[tableName]]; // 첫 번째 요소는 테이블 이름 (배열 안에 배열)
-                parsedRows.forEach(row => {
-                    dataToSend.push([row.core, row.task, row.usaged]); // 각 row를 [core, task, usaged] 배열로 추가
-                });
-
-                fileDataArray.push(dataToSend); // 최종적으로 이 dataToSend를 서버로 보냅니다.
+        for (const file of files) {
+            if (file.type !== 'text/plain') {
+                uploadStatus.textContent = '텍스트 파일 (.txt) 만 업로드 가능합니다.';
+                uploadStatus.className = 'status-message error';
+                continue;
             }
 
-            // 모든 파일의 데이터를 한 번의 요청으로 서버에 전송
+            // 파일 이름을 테이블 이름으로 사용 (확장자 제거)
+            const tableName = file.name.split('.').slice(0, -1).join('.');
+            // --- DEBUG LOG ---
+            //console.log("DEBUG main.js (upload): Extracted tableName from filename:", tableName);
+            if (!tableName) {
+                 uploadStatus.textContent = `유효한 파일 이름이 아닙니다: ${file.name}`;
+                 uploadStatus.className = 'status-message error';
+                 continue;
+            }
+
+            const reader = new FileReader();
+
+            // FileReader는 비동기적으로 파일을 읽으므로 Promise로 래핑
+            const fileContent = await new Promise((resolve, reject) => {
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file);
+            });
+
+            // 파일 내용을 줄 단위로 분리하여 처리
+            const lines = fileContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            const profileData = [];
+            let currentTasksHeader = []; // 현재 섹션의 task 헤더 (task1, task2 등)
+
+            for (const line of lines) {
+                // 첫 줄 또는 섹션의 시작 줄: '\ttask1\ttask2...' 형태의 헤더
+                if (line.startsWith('\t') && line.includes('task')) {
+                    currentTasksHeader = line.split('\t').filter(p => p.startsWith('task'));
+                } else if (line.startsWith('core')) { // core usaged 데이터
+                    const parts = line.split('\t').filter(p => p.length > 0);
+                    const coreName = parts[0]; // core1, core2 등
+                    const usagedValues = parts.slice(1).map(Number); // usaged 값들
+
+                    // currentTasksHeader가 비어있지 않다면, core-task 매핑
+                    if (currentTasksHeader.length > 0) {
+                        for (let i = 0; i < currentTasksHeader.length; i++) {
+                            if (usagedValues[i] !== undefined && !isNaN(usagedValues[i])) {
+                                profileData.push({ core: coreName, task: currentTasksHeader[i], usaged: usagedValues[i] });
+                            }
+                        }
+                    } else {
+                        // currentTasksHeader가 없는 경우 (단일 usaged 값으로 가정하거나 'N/A' 처리)
+                        usagedValues.forEach((usaged, index) => {
+                            if (!isNaN(usaged)) {
+                                // 임시 task 이름 부여. inputFile.txt 첫 블록처럼 task 헤더가 없는 경우
+                                profileData.push({ core: coreName, task: `GLOBAL_TASK_${index + 1}`, usaged: usaged });
+                            }
+                        });
+                    }
+                }
+            }
+            allProfilesData.push({ tableName: tableName, data: profileData });
+        }
+
+        try {
             const response = await fetch('/profiles', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(fileDataArray)
+                body: JSON.stringify(allProfilesData),
             });
 
             const result = await response.json();
 
-            if (response.ok) {
-                uploadStatus.textContent = result.message;
+            if (result.status === 'success') {
+                uploadStatus.textContent = `업로드 성공: ${result.message}`;
                 uploadStatus.className = 'status-message success';
-                fetchAndRenderProfileList(); // 성공 시 프로파일 목록 새로고침
+                await fetchProfileList(); // 목록 새로고침
             } else {
-                throw new Error(result.message || '파일 업로드 실패');
+                uploadStatus.textContent = `업로드 실패: ${result.message}`;
+                uploadStatus.className = 'status-message error';
             }
-
         } catch (error) {
-            console.error('파일 업로드 오류:', error);
-            uploadStatus.textContent = `오류: ${error.message}`;
+            console.error('업로드 중 오류 발생:', error);
+            uploadStatus.textContent = `서버 통신 오류: ${error.message}`;
             uploadStatus.className = 'status-message error';
         }
     });
 
-    // 프로파일 목록 가져와서 렌더링 함수
-    async function fetchAndRenderProfileList() {
-        listStatus.textContent = '프로파일 목록을 불러오는 중...';
-        listStatus.className = 'status-message';
+    // 프로파일 목록 조회 및 렌더링
+    async function fetchProfileList() {
         try {
-            const response = await fetch('/profiles'); // GET /profiles 요청
-            if (!response.ok) {
-                throw new Error('프로파일 목록을 불러오는 데 실패했습니다.');
-            }
-            const tableNames = await response.json(); // 응답은 테이블 이름 배열 (예: ['profile1', 'profile2'])
+            const response = await fetch('/profiles');
+            const tableList = await response.json();
 
             profileListUl.innerHTML = ''; // 기존 목록 초기화
-            if (tableNames.length === 0) {
-                profileListUl.innerHTML = '<li class="no-profiles">저장된 프로파일이 없습니다.</li>';
-                listStatus.textContent = '';
-                chartControls.classList.add('hidden'); // 차트 컨트롤 숨김
-            } else {
-                tableNames.forEach(tableName => {
-                    const li = document.createElement('li');
-                    li.setAttribute('data-table-name', tableName);
-                    li.innerHTML = `
-                        <span class="table-name">${tableName}</span>
-                        <div class="button-group">
-                            <button class="button secondary view-profile" data-table-name="${tableName}">조회</button>
-                            <button class="button danger delete-profile" data-table-name="${tableName}">삭제</button>
-                        </div>
-                    `;
-                    profileListUl.appendChild(li);
-                });
-                listStatus.textContent = '';
-                // 프로파일 목록이 있으면 차트 컨트롤 표시
-                chartControls.classList.remove('hidden');
-            }
-        } catch (error) {
-            console.error('프로파일 목록 로드 오류:', error);
-            listStatus.textContent = `오류: ${error.message}`;
-            listStatus.className = 'status-message error';
-            chartControls.classList.add('hidden'); // 오류 시 차트 컨트롤 숨김
-        }
-    }
 
-    // "조회" 버튼 클릭 시 프로파일 데이터 로드 및 차트 그리기
-    profileListUl.addEventListener('click', async (event) => {
-        const target = event.target;
-        if (target.classList.contains('view-profile')) {
-            const tableName = target.dataset.tableName;
-            if (!tableName) {
-                alert('테이블 이름을 찾을 수 없습니다.');
+            if (tableList.length === 0) {
+                profileListUl.innerHTML = '<li class="status-message info">저장된 프로파일이 없습니다.</li>';
                 return;
             }
 
-            chartStatus.textContent = `${tableName} 프로파일 데이터를 불러오는 중...`;
-            chartStatus.className = 'status-message';
+            tableList.forEach(tableName => {
+                const li = document.createElement('li');
+                li.dataset.tableName = tableName; // 데이터 속성 추가
+                li.innerHTML = `
+                    <span class="table-name">${tableName}</span>
+                    <div class="button-group">
+                        <button class="button secondary view-profile" data-table-name="${tableName}">조회</button>
+                        <button class="button danger delete-profile" data-table-name="${tableName}">삭제</button>
+                    </div>
+                `;
+                profileListUl.appendChild(li);
+            });
 
-            try {
-                const response = await fetch(`/profiles/${tableName}`);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || '프로파일 데이터 로드 실패');
-                }
-                currentProfileData = await response.json();
-                currentProfileTableName = tableName; // 현재 선택된 테이블 이름 저장
+            // 조회 및 삭제 버튼 이벤트 리스너 재할당
+            addProfileListEventListeners();
 
-                currentProfileNameSpan.textContent = `현재 선택된 프로파일: ${tableName}`;
-                chartStatus.textContent = ''; // 상태 메시지 초기화
+        } catch (error) {
+            console.error('프로파일 목록 조회 중 오류 발생:', error);
+            profileListUl.innerHTML = `<li class="status-message error">목록을 불러오는 데 실패했습니다: ${error.message}</li>`;
+        }
+    }
 
-                // 조회된 데이터를 바탕으로 Core 및 Task 필터 옵션 업데이트
-                updateFilterOptions(currentProfileData);
+    // 프로파일 목록 버튼 (조회, 삭제) 이벤트 리스너 할당
+    function addProfileListEventListeners() {
+        document.querySelectorAll('.view-profile').forEach(button => {
+            button.onclick = async (event) => {
+                const tableName = event.target.dataset.tableName;
+                // --- DEBUG LOG ---
+                console.log("DEBUG main.js (view): tableName from button dataset:", tableName);
+                currentTableName = tableName; // 현재 선택된 테이블 이름 저장
+                currentProfileNameSpan.textContent = tableName;
+                chartControls.classList.remove('hidden'); // 차트 컨트롤 표시
+                statsSection.classList.remove('hidden'); // 통계 섹션 표시
+                chartStatus.textContent = `"${tableName}" 데이터 로딩 중...`;
+                chartStatus.className = 'status-message info';
 
-                // 차트 그리기 (초기 로드는 전체 데이터, 기본 차트 타입)
-                drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
-
-            } catch (error) {
-                console.error('프로파일 데이터 조회 오류:', error);
-                chartStatus.textContent = `오류: ${error.message}`;
-                chartStatus.className = 'status-message error';
-                currentProfileData = []; // 오류 발생 시 데이터 초기화
-                currentProfileTableName = null;
-                currentProfileNameSpan.textContent = '현재 선택된 프로파일: 없음';
-                if (currentChart) {
-                    currentChart.destroy();
-                    currentChart = null;
-                }
+                // Core 및 Task 필터 초기화
                 selectCore.innerHTML = '<option value="all">전체 Core</option>';
                 selectTask.innerHTML = '<option value="all">전체 Task</option>';
-            }
-        } else if (target.classList.contains('delete-profile')) {
-            const tableName = target.dataset.tableName;
-            if (!tableName) {
-                alert('테이블 이름을 찾을 수 없습니다.');
-                return;
-            }
+                coreSelectContainer.classList.add('hidden');
+                taskSelectContainer.classList.add('hidden');
+                groupBySelect.value = 'none'; // GroupBy도 'none'으로 초기화
 
-            if (confirm(`정말로 "${tableName}" 프로파일을 삭제하시겠습니까?`)) {
                 try {
-                    const response = await fetch(`/profiles/drop/${tableName}`, {
-                        method: 'DELETE'
-                    });
+                    // --- DEBUG LOG ---
+                    console.log("DEBUG main.js (view): Fetching data from URL:", `/profiles/${tableName}`);
+                    const response = await fetch(`/profiles/${tableName}`);
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        currentProfileData = data.data; // 전체 데이터 저장
+                        chartStatus.textContent = `"${tableName}" 데이터 로드 완료. 차트를 업데이트하거나 통계를 확인하세요.`;
+                        chartStatus.className = 'status-message success';
 
-                    const result = await response.json();
-                    if (response.ok) {
-                        alert(result.message);
-                        fetchAndRenderProfileList(); // 삭제 후 목록 새로고침
-                        // 현재 선택된 프로파일이 삭제된 경우 차트 초기화
-                        if (currentProfileTableName === tableName) {
-                            currentProfileData = [];
-                            currentProfileTableName = null;
-                            currentProfileNameSpan.textContent = '현재 선택된 프로파일: 없음';
-                            if (currentChart) {
-                                currentChart.destroy();
-                                currentChart = null;
-                            }
-                            selectCore.innerHTML = '<option value="all">전체 Core</option>';
-                            selectTask.innerHTML = '<option value="all">전체 Task</option>';
-                        }
+                        // 데이터 로드 후 바로 통계 불러오기 (기본: 전체 통계)
+                        statTypeSelect.value = 'overall';
+                        fetchAndDisplayStatistics(currentTableName, 'overall');
+
+                        // 데이터 로드 후 차트 바로 그리기 (기본: 막대 그래프, 그룹화 없음)
+                        drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
+
+                        // Core 및 Task 드롭다운 메뉴 동적 채우기
+                        populateCoreTaskFilters(currentProfileData);
+
                     } else {
-                        throw new Error(result.message || '프로파일 삭제 실패');
+                        currentProfileData = [];
+                        chartStatus.textContent = `"${tableName}" 데이터 로드 실패: ${data.message}`;
+                        chartStatus.className = 'status-message error';
+                        // 데이터 로드 실패 시 통계 섹션도 숨김
+                        statsSection.classList.add('hidden');
                     }
                 } catch (error) {
-                    console.error('프로파일 삭제 오류:', error);
-                    alert(`오류: ${error.message}`);
+                    currentProfileData = [];
+                    console.error('프로파일 데이터 조회 중 오류 발생:', error);
+                    chartStatus.textContent = `서버 통신 오류: ${error.message}`;
+                    chartStatus.className = 'status-message error';
+                    statsSection.classList.add('hidden');
                 }
-            }
-        }
-    });
+            };
+        });
 
-    // Core 및 Task 필터 옵션 업데이트 함수
-    function updateFilterOptions(data) {
-        const cores = [...new Set(data.map(d => d.core))].sort();
-        const tasks = [...new Set(data.map(d => d.task))].sort();
-
-        selectCore.innerHTML = '<option value="all">전체 Core</option>' +
-            cores.map(core => `<option value="${core}">${core}</option>`).join('');
-        selectTask.innerHTML = '<option value="all">전체 Task</option>' +
-            tasks.map(task => `<option value="${task}">${task}</option>`).join('');
-
-        // 현재 선택된 값으로 필터 UI 초기화
-        selectCore.value = 'all';
-        selectTask.value = 'all';
-
-        // 그룹화 기준에 따라 필터 UI 표시/숨김
-        toggleFilterVisibility(groupBySelect.value);
+        document.querySelectorAll('.delete-profile').forEach(button => {
+            button.onclick = async (event) => {
+                const tableName = event.target.dataset.tableName;
+                // --- DEBUG LOG ---
+                console.log("DEBUG main.js (delete): tableName from button dataset:", tableName);
+                if (confirm(`정말로 "${tableName}" 프로파일을 삭제하시겠습니까?`)) {
+                    try {
+                        const response = await fetch(`/profiles/${tableName}`, {
+                            method: 'DELETE',
+                        });
+                        const result = await response.json();
+                        if (result.status === 'success') {
+                            alert(`"${tableName}" 프로파일이 성공적으로 삭제되었습니다.`);
+                            await fetchProfileList(); // 목록 새로고침
+                            // 현재 보고 있던 프로파일이 삭제된 경우 초기화
+                            if (currentTableName === tableName) {
+                                currentTableName = '';
+                                currentProfileNameSpan.textContent = '선택되지 않음';
+                                chartControls.classList.add('hidden');
+                                statsSection.classList.add('hidden');
+                                profilerChart?.destroy(); // 차트 파괴
+                                chartStatus.textContent = '';
+                                currentProfileData = [];
+                            }
+                        } else {
+                            alert(`"${tableName}" 프로파일 삭제 실패: ${result.message}`);
+                        }
+                    } catch (error) {
+                        console.error('프로파일 삭제 중 오류 발생:', error);
+                        alert(`프로파일 삭제 중 서버 통신 오류가 발생했습니다: ${error.message}`);
+                    }
+                }
+            };
+        });
     }
 
-    // 그룹화 기준 선택 시 필터 UI 표시/숨김
-    groupBySelect.addEventListener('change', (event) => {
-        const groupByValue = event.target.value;
-        toggleFilterVisibility(groupByValue);
-        // 그룹화 기준이 변경되면 차트 다시 그림
-        if (currentProfileData.length > 0) {
-            drawChart(currentProfileData, chartTypeSelect.value, groupByValue);
-        }
-    });
-
-    function toggleFilterVisibility(groupByValue) {
-        coreSelectContainer.classList.add('hidden');
-        selectCore.value = 'all'; // 초기화
-        taskSelectContainer.classList.add('hidden');
-        selectTask.value = 'all'; // 초기화
-
-        if (groupByValue === 'core') {
-            coreSelectContainer.classList.remove('hidden');
-        } else if (groupByValue === 'task') {
-            taskSelectContainer.classList.remove('hidden');
-        }
-    }
-
-
-    // "차트 업데이트" 버튼 클릭 시 차트 다시 그리기
-    updateChartButton.addEventListener('click', () => {
-        if (currentProfileData.length === 0) {
-            chartStatus.textContent = '표시할 프로파일 데이터가 없습니다.';
-            chartStatus.className = 'status-message error';
-            return;
-        }
-
-        const chartType = chartTypeSelect.value;
-        const groupBy = groupBySelect.value;
-
-        drawChart(currentProfileData, chartType, groupBy);
-    });
-
-    // Core 또는 Task 선택 시 차트 업데이트 (이벤트 위임 사용)
-    coreSelectContainer.addEventListener('change', () => {
-        if (currentProfileData.length > 0) {
-            drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
-        }
-    });
-    taskSelectContainer.addEventListener('change', () => {
-        if (currentProfileData.length > 0) {
-            drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
-        }
-    });
-
-
-    // 차트 그리기 함수
+    // 차트 그리기 기능 
     function drawChart(data, chartType, groupBy) {
-        if (currentChart) {
-            currentChart.destroy(); // 기존 차트 인스턴스 파괴
+        if (profilerChart) {
+            profilerChart.destroy(); // 기존 차트 파괴
         }
 
-        let filteredData = [...data]; // 원본 데이터 복사
-
-        // 필터 적용
+        // 선택된 Core 또는 Task 필터 값 가져오기
         const selectedCore = selectCore.value;
         const selectedTask = selectTask.value;
 
-        if (groupBy === 'core' && selectedCore !== 'all') {
+        let filteredData = data;
+
+        // Core 필터 적용
+        if (selectedCore !== 'all' && selectedCore !== '') { // 빈 문자열도 처리
             filteredData = filteredData.filter(d => d.core === selectedCore);
-        } else if (groupBy === 'task' && selectedTask !== 'all') {
+        }
+
+        // Task 필터 적용
+        if (selectedTask !== 'all' && selectedTask !== '') { // 빈 문자열도 처리
             filteredData = filteredData.filter(d => d.task === selectedTask);
         }
 
-        // 데이터 집계
-        const aggregatedData = {};
+
         let labels = [];
-        let datasets = [];
+        let usagedValues = [];
+        let chartTitle = `${currentTableName} 프로파일`;
 
-        if (groupBy === 'none') {
-            // 전체 데이터 (task별로 usaged를 보여줌)
-            labels = [...new Set(filteredData.map(d => d.task))].sort();
-            const usagedValues = labels.map(task => {
-                // 특정 task에 대한 모든 usaged 값의 평균 또는 합계 (여기서는 평균)
-                const relevantData = filteredData.filter(d => d.task === task);
-                return relevantData.length > 0 ? relevantData.reduce((sum, d) => sum + d.usaged, 0) / relevantData.length : 0;
+        // 데이터 그룹화 및 집계
+        if (groupBy === 'core') {
+            const coreMap = new Map();
+            filteredData.forEach(item => {
+                if (!coreMap.has(item.core)) {
+                    coreMap.set(item.core, []);
+                }
+                coreMap.get(item.core).push(item.usaged);
             });
-
-            datasets.push({
-                label: '평균 Usaged',
-                data: usagedValues,
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                fill: false, // 선 차트에서 영역 채우지 않음
+            labels = Array.from(coreMap.keys()).sort();
+            usagedValues = labels.map(core => {
+                const values = coreMap.get(core);
+                const sum = values.reduce((acc, val) => acc + val, 0);
+                return sum / values.length; // 평균 usaged
             });
-
-        } else if (groupBy === 'core') {
-            // Core별로 usaged 집계 (각 core의 task별 usaged 또는 평균 usaged)
-            const cores = [...new Set(filteredData.map(d => d.core))].sort();
-            const tasks = [...new Set(filteredData.map(d => d.task))].sort();
-
-            labels = tasks; // x축 레이블은 task
-            datasets = cores.map(core => {
-                const dataForCore = labels.map(task => {
-                    const relevantData = filteredData.filter(d => d.core === core && d.task === task);
-                    return relevantData.length > 0 ? relevantData.reduce((sum, d) => sum + d.usaged, 0) / relevantData.length : 0;
-                });
-                return {
-                    label: `Core: ${core}`,
-                    data: dataForCore,
-                    backgroundColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.6)`,
-                    borderColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 1)`,
-                    borderWidth: 1,
-                    fill: false,
-                };
-            });
-
+            chartTitle += ' (Core별 평균 Usage)';
         } else if (groupBy === 'task') {
-            // Task별로 usaged 집계 (각 task의 core별 usaged 또는 평균 usaged)
-            const tasks = [...new Set(filteredData.map(d => d.task))].sort();
-            const cores = [...new Set(filteredData.map(d => d.core))].sort();
-
-            labels = cores; // x축 레이블은 core
-            datasets = tasks.map(task => {
-                const dataForTask = labels.map(core => {
-                    const relevantData = filteredData.filter(d => d.task === task && d.core === core);
-                    return relevantData.length > 0 ? relevantData.reduce((sum, d) => sum + d.usaged, 0) / relevantData.length : 0;
-                });
-                return {
-                    label: `Task: ${task}`,
-                    data: dataForTask,
-                    backgroundColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.6)`,
-                    borderColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 1)`,
-                    borderWidth: 1,
-                    fill: false,
-                };
+            const taskMap = new Map();
+            filteredData.forEach(item => {
+                if (!taskMap.has(item.task)) {
+                    taskMap.set(item.task, []);
+                }
+                taskMap.get(item.task).push(item.usaged);
             });
+            labels = Array.from(taskMap.keys()).sort();
+            usagedValues = labels.map(task => {
+                const values = taskMap.get(task);
+                const sum = values.reduce((acc, val) => acc + val, 0);
+                return sum / values.length; // 평균 usaged
+            });
+            chartTitle += ' (Task별 평균 Usage)';
+        } else { // 'none' 또는 다른 경우
+            labels = filteredData.map(item => `${item.core}-${item.task}`);
+            usagedValues = filteredData.map(item => item.usaged);
+            chartTitle += ' (전체 데이터)';
         }
 
-        const chartConfig = {
+        const ctx = profilerChartCanvas.getContext('2d');
+        profilerChart = new Chart(ctx, {
             type: chartType,
             data: {
                 labels: labels,
-                datasets: datasets
+                datasets: [{
+                    label: 'Usaged',
+                    data: usagedValues,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // 컨테이너에 맞춰 크기 조절
+                maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    datalabels: { // chartjs-plugin-datalabels 설정
+                    title: {
                         display: true,
-                        color: 'black',
+                        text: chartTitle,
                         font: {
-                            weight: 'bold'
-                        },
-                        formatter: (value) => value // 데이터 값을 직접 표시
+                            size: 16
+                        }
+                    },
+                    legend: {
+                        display: true
                     }
                 },
                 scales: {
@@ -430,24 +356,195 @@ document.addEventListener('DOMContentLoaded', () => {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'Usaged'
+                            text: 'Usaged Value'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: groupBy === 'core' ? 'Core' : (groupBy === 'task' ? 'Task' : 'Core-Task Pair')
                         }
                     }
                 }
-            },
-            // plugins: [ChartDataLabels] // 플러그인 등록 (만약 import 했다면)
-        };
-
-        // Polar Area 차트의 경우 Y축 스케일 제거
-        if (chartType === 'polarArea') {
-            if (chartConfig.options.scales) { // scales 속성이 존재하는지 확인 후 삭제
-                delete chartConfig.options.scales;
             }
-        }
-
-        currentChart = new Chart(profilerChartCanvas, chartConfig);
+        });
     }
 
-    // 페이지 로드 시 프로파일 목록을 가져와서 렌더링
-    fetchAndRenderProfileList();
+    // Core 및 Task 필터 드롭다운 채우기
+    function populateCoreTaskFilters(data) {
+        const cores = new Set();
+        const tasks = new Set();
+
+        data.forEach(item => {
+            cores.add(item.core);
+            tasks.add(item.task);
+        });
+
+        // Core 드롭다운 채우기
+        selectCore.innerHTML = '<option value="all">전체 Core</option>';
+        Array.from(cores).sort().forEach(core => {
+            const option = document.createElement('option');
+            option.value = core;
+            option.textContent = core;
+            selectCore.appendChild(option);
+        });
+
+        // Task 드롭다운 채우기
+        selectTask.innerHTML = '<option value="all">전체 Task</option>';
+        Array.from(tasks).sort().forEach(task => {
+            const option = document.createElement('option');
+            option.value = task;
+            option.textContent = task;
+            selectTask.appendChild(option);
+        });
+    }
+
+
+    // ==========================================================
+    // 차트 컨트롤 이벤트 리스너
+    // ==========================================================
+    updateChartButton.addEventListener('click', () => {
+        if (currentProfileData.length === 0) {
+            chartStatus.textContent = '차트를 그릴 데이터가 없습니다. 프로파일을 조회하세요.';
+            chartStatus.className = 'status-message info';
+            return;
+        }
+        drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
+    });
+
+    chartTypeSelect.addEventListener('change', () => {
+         if (currentProfileData.length > 0) {
+            drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
+        }
+    });
+
+    groupBySelect.addEventListener('change', () => {
+        const selectedGroupBy = groupBySelect.value;
+        if (selectedGroupBy === 'core') {
+            coreSelectContainer.classList.remove('hidden');
+            taskSelectContainer.classList.add('hidden');
+        } else if (selectedGroupBy === 'task') {
+            taskSelectContainer.classList.remove('hidden');
+            coreSelectContainer.classList.add('hidden');
+        } else { // 'none'
+            coreSelectContainer.classList.add('hidden');
+            taskSelectContainer.classList.add('hidden');
+        }
+        // GroupBy 변경 시 차트 즉시 업데이트 (선택사항)
+        if (currentProfileData.length > 0) {
+             drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
+        }
+    });
+
+    // Core 또는 Task 필터 변경 시 차트 즉시 업데이트 (선택사항)
+    selectCore.addEventListener('change', () => {
+        if (currentProfileData.length > 0) {
+            drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
+        }
+    });
+    selectTask.addEventListener('change', () => {
+        if (currentProfileData.length > 0) {
+            drawChart(currentProfileData, chartTypeSelect.value, groupBySelect.value);
+        }
+    });
+
+    // 통계 유형 선택 변경 시 이벤트 리스너
+    statTypeSelect.addEventListener('change', () => {
+        fetchAndDisplayStatistics(currentTableName, statTypeSelect.value);
+    });
+
+    
+    // 통계 데이터 조회 및 표시 함수
+    async function fetchAndDisplayStatistics(tableName, statType) {
+        // --- DEBUG LOG ---
+        console.log(`DEBUG main.js (fetchAndDisplayStatistics): Called for tableName: "${tableName}", statType: "${statType}"`);
+
+        if (!tableName) {
+            statStatus.textContent = '통계를 볼 프로파일을 먼저 선택하세요.';
+            statStatus.className = 'status-message info';
+            overallStatsDiv.classList.add('hidden');
+            coreStatsList.classList.add('hidden');
+            taskStatsList.classList.add('hidden');
+            return;
+        }
+
+        statStatus.textContent = `"${tableName}"의 ${statType} 통계 로딩 중...`;
+        statStatus.className = 'status-message info';
+
+        // 모든 통계 컨테이너 숨김 및 내용 초기화
+        overallStatsDiv.classList.add('hidden');
+        coreStatsList.classList.add('hidden');
+        taskStatsList.classList.add('hidden');
+        overallStatsDiv.innerHTML = '';
+        coreStatsList.innerHTML = '';
+        taskStatsList.innerHTML = '';
+
+        try {
+            // --- DEBUG LOG ---
+            //console.log(`DEBUG main.js (fetchAndDisplayStatistics): Fetching stats from URL: /profiles/${tableName}/statistics/${statType}`);
+            const response = await fetch(`/profiles/${tableName}/statistics/${statType}`);
+            const stats = await response.json();
+
+            if (response.ok) {
+                statStatus.textContent = `"${tableName}"의 ${statType} 통계 로드 완료.`;
+                statStatus.className = 'status-message success';
+
+                if (statType === 'overall') {
+                    overallStatsDiv.classList.remove('hidden');
+                    overallStatsDiv.innerHTML = `
+                        <p><strong>총 레코드 수:</strong> <span class="stat-value">${stats.totalCount}</span></p>
+                        <p><strong>Usaged 최소값:</strong> <span class="stat-value">${stats.min.toFixed(2)}</span></p>
+                        <p><strong>Usaged 최대값:</strong> <span class="stat-value">${stats.max.toFixed(2)}</span></p>
+                        <p><strong>Usaged 평균:</strong> <span class="stat-value">${stats.avg.toFixed(2)}</span></p>
+                        <p><strong>Usaged 표준편차:</strong> <span class="stat-value">${stats.stddev.toFixed(2)}</span></p>
+                    `;
+                } else if (statType === 'core') {
+                    coreStatsList.classList.remove('hidden');
+                    if (stats.length > 0) {
+                        stats.forEach(stat => {
+                            const li = document.createElement('li');
+                            li.innerHTML = `
+                                <strong>${stat.core}:</strong>
+                                    Min: <span class="stat-value">${stat.min.toFixed(2)}</span>,
+                                    Max: <span class="stat-value">${stat.max.toFixed(2)}</span>,
+                                    Avg: <span class="stat-value">${stat.avg.toFixed(2)}</span>,
+                                    StdDev: <span class="stat-value">${stat.stddev ? stat.stddev.toFixed(2) : 'N/A'}</span>
+                            `;
+                            coreStatsList.appendChild(li);
+                        });
+                    } else {
+                        coreStatsList.innerHTML = '<li class="status-message info">Core별 통계 데이터가 없습니다.</li>';
+                    }
+                } else if (statType === 'task') {
+                    taskStatsList.classList.remove('hidden');
+                    if (stats.length > 0) {
+                        stats.forEach(stat => {
+                            const li = document.createElement('li');
+                            li.innerHTML = `
+                                <strong>${stat.task}:</strong>
+                                    Min: <span class="stat-value">${stat.min.toFixed(2)}</span>,
+                                    Max: <span class="stat-value">${stat.max.toFixed(2)}</span>,
+                                    Avg: <span class="stat-value">${stat.avg.toFixed(2)}</span>,
+                                    StdDev: <span class="stat-value">${stat.stddev ? stat.stddev.toFixed(2) : 'N/A'}</span>
+                            `;
+                            taskStatsList.appendChild(li);
+                        });
+                    } else {
+                        taskStatsList.innerHTML = '<li class="status-message info">Task별 통계 데이터가 없습니다.</li>';
+                    }
+                }
+            } else {
+                statStatus.textContent = `통계 로드 실패: ${stats.message || '알 수 없는 오류'}`;
+                statStatus.className = 'status-message error';
+            }
+        } catch (error) {
+            console.error('통계 데이터 조회 중 오류 발생:', error);
+            statStatus.textContent = `통계 로드 중 서버 통신 오류: ${error.message}`;
+            statStatus.className = 'status-message error';
+        }
+    }
+
+
+    // 페이지 로드 시 프로파일 목록 불러오기
+    fetchProfileList();
 });
