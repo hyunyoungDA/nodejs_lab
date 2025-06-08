@@ -1,0 +1,24 @@
+{
+  "dependencies": {
+    "chart.js": "^4.4.9",
+    "express": "^5.1.0",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.14.1",
+    "nunjucks": "^3.2.4",
+    "sequelize": "^6.37.7",
+    "sequelize-cli": "^6.6.3"
+  },
+  "name": "profiler",
+  "version": "1.0.0",
+  "description": "웹응용 기말과제",
+  "main": "app.js",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon"
+  },
+  "author": "",
+  "license": "MIT"
+}

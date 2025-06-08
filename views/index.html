@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Task Profiler</title>
+    <link rel="stylesheet" href="/main.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Core Task Profiler</h1>
+
+        <section class="upload-section">
+            <h2>새 프로파일 업로드</h2>
+            <form id="profile_form" enctype="multipart/form-data">
+                <label for="profile_file_input" class="file-label">프로파일 파일 선택 (.txt)</label>
+                <input type="file" id="profile_file_input" accept=".txt" multiple>
+                <button type="submit" class="button primary">업로드</button>
+            </form>
+            <p id="upload_status" class="status-message"></p>
+        </section>
+
+        <hr>
+
+        <section class="profile-list-section">
+            <h2>저장된 프로파일 목록</h2>
+            <p id="current_profile_name">현재 선택된 프로파일: 없음</p>
+            <div id="profile_list_container">
+                <ul id="profile_list">
+                    {% if tableList and tableList.length > 0 %}
+                        {% for table in tableList %}
+                            <li data-table-name="{{ table }}">
+                                <span class="table-name">{{ table }}</span>
+                                <div class="button-group">
+                                    <button class="button secondary view-profile" data-table-name="{{ table }}">조회</button>
+                                    <button class="button danger delete-profile" data-table-name="{{ table }}">삭제</button>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="no-profiles">저장된 프로파일이 없습니다.</li>
+                    {% endif %}
+                </ul>
+                <p id="list_status" class="status-message"></p>
+            </div>
+        </section>
+
+        <hr>
+
+        <section class="chart-section">
+            <h2>프로파일 차트</h2>
+            <div id="chart_controls" class="hidden"> <div class="filter-options">
+                    <label for="chart_type">차트 종류:</label>
+                    <select id="chart_type">
+                        <option value="bar">막대 차트 (Bar)</option>
+                        <option value="line">선 차트 (Line)</option>
+                        <option value="polarArea">극좌표 차트 (Polar Area)</option>
+                    </select>
+
+                    <label for="group_by">집계 기준:</label>
+                    <select id="group_by">
+                        <option value="none">전체 (None)</option>
+                        <option value="core">Core별</option>
+                        <option value="task">Task별</option>
+                    </select>
+
+                    <div id="core_select_container" class="hidden">
+                        <label for="select_core">Core 선택:</label>
+                        <select id="select_core"></select>
+                    </div>
+
+                    <div id="task_select_container" class="hidden">
+                        <label for="select_task">Task 선택:</label>
+                        <select id="select_task"></select>
+                    </div>
+                </div>
+                <button id="update_chart_button" class="button primary">차트 업데이트</button>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="profiler_chart"></canvas>
+            </div>
+            <p id="chart_status" class="status-message"></p>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="/main.js"></script>
+</body>
+</html>
