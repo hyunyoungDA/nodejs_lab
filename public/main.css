@@ -1,6 +1,3 @@
-/* public/main.css */
-
-/* 기본 스타일 및 컨테이너 설정 */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
@@ -44,90 +41,98 @@ section {
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
     text-decoration: none;
-    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
-    border: none;
-    margin: 5px 0; /* 버튼 간 여백 */
-}
-
-.button:hover {
-    transform: translateY(-1px);
-}
-
-.button:active {
-    transform: translateY(0);
+    text-align: center;
+    margin-right: 10px;
+    margin-bottom: 10px; /* 버튼 간 간격 추가 */
 }
 
 .button.primary {
-    background-color: #007bff; /* 파란색 */
+    background-color: #4CAF50; /* Green */
     color: white;
+    border: 1px solid #4CAF50;
 }
 
 .button.primary:hover {
-    background-color: #0056b3;
+    background-color: #45a049;
+    transform: translateY(-2px);
 }
 
 .button.secondary {
-    background-color: #6c757d; /* 회색 */
+    background-color: #008CBA; /* Blue */
     color: white;
+    border: 1px solid #008CBA;
 }
 
 .button.secondary:hover {
-    background-color: #5a6268;
+    background-color: #007bb5;
+    transform: translateY(-2px);
 }
 
 .button.danger {
-    background-color: #dc3545; /* 빨간색 */
+    background-color: #f44336; /* Red */
     color: white;
+    border: 1px solid #f44336;
 }
 
 .button.danger:hover {
-    background-color: #c82333;
+    background-color: #da190b;
+    transform: translateY(-2px);
 }
 
-/* 폼 스타일 */
+/* 폼 요소 스타일 */
 form {
+    background-color: #f0f4f7;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #e5e9ec;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
-    padding: 20px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background-color: #fcfcfc;
+    gap: 15px; /* 입력 요소 간 간격 */
 }
 
+form label {
+    font-weight: bold;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+form input[type="file"] {
+    border: 1px solid #ccc;
+    padding: 8px;
+    border-radius: 4px;
+    width: calc(100% - 16px);
+    max-width: 400px;
+}
+
+/* 파일 입력 커스터마이징 */
 .file-label {
-    display: block;
-    background-color: #e9ecef;
+    background-color: #007bff;
+    color: white;
     padding: 10px 15px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 0.95em;
-    color: #495057;
-    border: 1px solid #ced4da;
-    transition: background-color 0.2s;
+    display: inline-block;
+    transition: background-color 0.3s ease;
 }
 
 .file-label:hover {
-    background-color: #dfe3e7;
+    background-color: #0056b3;
 }
 
 input[type="file"] {
-    display: none; /* 실제 파일 입력 필드는 숨김 */
+    display: none; /* 실제 파일 입력 숨김 */
 }
 
-form button[type="submit"] {
-    width: 100%;
-    max-width: 200px;
-}
 
 /* 상태 메시지 */
 .status-message {
-    text-align: center;
     margin-top: 15px;
     padding: 10px;
     border-radius: 5px;
+    text-align: center;
     font-weight: bold;
 }
 
@@ -149,13 +154,13 @@ form button[type="submit"] {
     border: 1px solid #bee5eb;
 }
 
-/* 프로파일 목록 스타일 */
+/* 프로파일 목록 */
 #profile_list_container {
-    background-color: #fefefe;
-    border: 1px solid #e9e9e9;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
     border-radius: 8px;
     padding: 20px;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 #profile_list {
@@ -168,74 +173,49 @@ form button[type="submit"] {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 15px;
+    padding: 12px 0;
     border-bottom: 1px solid #eee;
-    font-size: 1.05em;
-    color: #444;
 }
 
 #profile_list li:last-child {
     border-bottom: none;
 }
 
-#profile_list li:nth-child(odd) {
-    background-color: #fdfdfd;
-}
-
-#profile_list li:hover {
-    background-color: #f0f8ff; /* 마우스 오버 시 강조 */
-}
-
 .table-name {
-    flex-grow: 1; /* 이름이 길어도 공간을 차지하도록 */
+    font-size: 1.1em;
     font-weight: 600;
-    color: #34495e;
+    color: #333;
+    flex-grow: 1; /* 이름이 길어도 공간을 차지하도록 */
+    margin-right: 15px;
 }
 
 .button-group {
     display: flex;
-    gap: 8px;
-    margin-left: 20px;
+    gap: 8px; /* 버튼 사이 간격 */
 }
 
-#current_profile_name {
-    text-align: center;
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #007bff;
-    margin: 20px 0;
-}
-
-.no-profiles {
-    text-align: center;
-    color: #6c757d;
-    font-style: italic;
-    padding: 20px;
-}
-
-/* 차트 섹션 */
+/* 차트 컨트롤 */
 #chart_controls {
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-    align-items: center;
-    margin-top: 30px;
-    padding: 20px;
+    flex-wrap: wrap; /* 작은 화면에서 줄바꿈 */
+    gap: 15px;
+    padding: 15px;
     background-color: #f9f9f9;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
+    align-items: flex-end; /* 버튼과 정렬 */
 }
 
-#chart_controls .filter-options {
+#chart_controls div {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 15px;
+    flex-direction: column;
+    flex-grow: 1; /* 공간이 허락하는 한 확장 */
+    min-width: 150px; /* 최소 너비 지정 */
 }
 
 #chart_controls label {
-    font-weight: bold;
+    margin-bottom: 5px;
+    font-weight: 500;
     color: #555;
 }
 
@@ -245,54 +225,108 @@ form button[type="submit"] {
     border: 1px solid #ccc;
     background-color: white;
     font-size: 0.95em;
-    min-width: 120px;
+    min-width: 150px;
 }
 
-#core_select_container,
-#task_select_container {
-    display: inline-block;
+#update_chart_button {
+    align-self: flex-end; /* 하단 정렬 */
+    margin-top: 20px; /* 상단 여백 추가 */
 }
 
 .chart-container {
-    position: relative; /* 자식 요소의 absolute 위치를 위한 기준 */
+    position: relative;
     width: 100%;
     height: 400px; /* 차트 높이 고정 */
     background-color: #fff;
-    border: 1px solid #ddd;
+    border: 1px solid #eee;
     border-radius: 8px;
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    padding: 20px;
+    box-sizing: border-box; /* 패딩 포함 너비 계산 */
+    margin-top: 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
+/* 숨김 처리 */
 .hidden {
     display: none !important;
+}
+
+
+
+// 통계 섹션 스타일
+#stats_section {
+    margin-top: 40px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+#stats_section h2 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+#stat_type {
+    margin-bottom: 20px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background-color: white;
+    font-size: 0.95em;
+    min-width: 150px;
+}
+
+#overall_stats,
+#core_stats_list,
+#task_stats_list {
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 15px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+#overall_stats p {
+    margin: 5px 0;
+    font-size: 1.05em;
+    color: #333;
+}
+
+#core_stats_list li,
+#task_stats_list li {
+    padding: 10px 0;
+    border-bottom: 1px dashed #eee;
+    list-style: none; /* 기본 리스트 스타일 제거 */
+}
+
+#core_stats_list li:last-child,
+#task_stats_list li:last-child {
+    border-bottom: none;
+}
+
+/* 통계 값 표시를 위한 클래스 */
+.stat-value {
+    font-weight: bold;
+    color: #007bff; /* 파란색 강조 */
+    margin-left: 5px;
 }
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
     .container {
-        margin: 20px auto;
+        margin: 15px auto;
         padding: 20px;
     }
 
-    .button-group {
-        flex-direction: column;
-        gap: 5px;
-        margin-left: 10px;
+    h1, h2 {
+        font-size: 1.8em;
     }
 
-    #profile_list li {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-    }
-
-    .table-name {
-        width: 100%; /* 모바일에서 전체 너비 차지 */
-        text-align: center;
+    .button {
+        width: 100%;
+        margin-right: 0;
     }
 
     #chart_controls {
@@ -300,12 +334,12 @@ form button[type="submit"] {
         align-items: stretch;
     }
 
-    #chart_controls .filter-options {
-        flex-direction: column;
-        align-items: stretch;
+    #update_chart_button {
+        align-self: stretch; /* 전체 너비 차지 */
     }
 
-    #chart_controls select {
-        width: 100%;
+    .button-group {
+        flex-direction: column;
+        gap: 5px;
     }
 }
