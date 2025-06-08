@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const profilerChartCanvas = document.getElementById('profiler_chart');
     const chartStatus = document.getElementById('chart_status');
 
-    // 통계 관련 DOM 요소
+    //통계 관련 DOM 요소
     const statsSection = document.getElementById('stats_section');
     const statTypeSelect = document.getElementById('stat_type');
     const statStatus = document.getElementById('stat_status'); // 통계 상태 메시지
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentProfileData = []; // 현재 로드된 프로파일 데이터 (차트 및 통계에 사용)
     let currentTableName = ''; // 현재 선택된 테이블 이름
 
-    // 프로파일 업로드 처리
+    // 프로파일 업로드 처리 
     profileForm.addEventListener('submit', async (event) => {
         event.preventDefault();
 
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 프로파일 목록 조회 및 렌더링
+    //프로파일 목록 조회 및 렌더링 
     async function fetchProfileList() {
         try {
             const response = await fetch('/profiles');
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     // --- DEBUG LOG ---
-                    console.log("DEBUG main.js (view): Fetching data from URL:", `/profiles/${tableName}`);
+                    //console.log("DEBUG main.js (view): Fetching data from URL:", `/profiles/${tableName}`);
                     const response = await fetch(`/profiles/${tableName}`);
                     const data = await response.json();
                     if (data.status === 'success') {
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.onclick = async (event) => {
                 const tableName = event.target.dataset.tableName;
                 // --- DEBUG LOG ---
-                console.log("DEBUG main.js (delete): tableName from button dataset:", tableName);
+                //console.log("DEBUG main.js (delete): tableName from button dataset:", tableName);
                 if (confirm(`정말로 "${tableName}" 프로파일을 삭제하시겠습니까?`)) {
                     try {
                         const response = await fetch(`/profiles/${tableName}`, {
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 차트 그리기 기능 
+    // 차트 그리기 
     function drawChart(data, chartType, groupBy) {
         if (profilerChart) {
             profilerChart.destroy(); // 기존 차트 파괴
@@ -370,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Core 및 Task 필터 드롭다운 채우기
+    // core, task 드롭다운 
     function populateCoreTaskFilters(data) {
         const cores = new Set();
         const tasks = new Set();
@@ -400,9 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ==========================================================
-    // 차트 컨트롤 이벤트 리스너
-    // ==========================================================
+    //차트 컨트롤 이벤트 리스너 
     updateChartButton.addEventListener('click', () => {
         if (currentProfileData.length === 0) {
             chartStatus.textContent = '차트를 그릴 데이터가 없습니다. 프로파일을 조회하세요.';
@@ -448,16 +446,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 통계 유형 선택 변경 시 이벤트 리스너
+    // 통계 이벤트 리스너 
     statTypeSelect.addEventListener('change', () => {
         fetchAndDisplayStatistics(currentTableName, statTypeSelect.value);
     });
 
-    
-    // 통계 데이터 조회 및 표시 함수
+    //통계 데이터 조회 
     async function fetchAndDisplayStatistics(tableName, statType) {
         // --- DEBUG LOG ---
-        console.log(`DEBUG main.js (fetchAndDisplayStatistics): Called for tableName: "${tableName}", statType: "${statType}"`);
+        //console.log(`DEBUG main.js (fetchAndDisplayStatistics): Called for tableName: "${tableName}", statType: "${statType}"`);
 
         if (!tableName) {
             statStatus.textContent = '통계를 볼 프로파일을 먼저 선택하세요.';
@@ -489,14 +486,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 statStatus.textContent = `"${tableName}"의 ${statType} 통계 로드 완료.`;
                 statStatus.className = 'status-message success';
 
+                // Helper function to safely display numeric stats
+                // 값이 null 또는 undefined일 경우 'N/A'를 반환하고, 아니면 toFixed(2) 적용
+                const formatStat = (value) => value !== null && value !== undefined ? value.toFixed(2) : 'N/A';
+                // 총 레코드 수는 toFixed가 필요 없으므로 별도 처리
+                const formatCount = (value) => value !== null && value !== undefined ? value : 'N/A';
+
                 if (statType === 'overall') {
                     overallStatsDiv.classList.remove('hidden');
                     overallStatsDiv.innerHTML = `
-                        <p><strong>총 레코드 수:</strong> <span class="stat-value">${stats.totalCount}</span></p>
-                        <p><strong>Usaged 최소값:</strong> <span class="stat-value">${stats.min.toFixed(2)}</span></p>
-                        <p><strong>Usaged 최대값:</strong> <span class="stat-value">${stats.max.toFixed(2)}</span></p>
-                        <p><strong>Usaged 평균:</strong> <span class="stat-value">${stats.avg.toFixed(2)}</span></p>
-                        <p><strong>Usaged 표준편차:</strong> <span class="stat-value">${stats.stddev.toFixed(2)}</span></p>
+                        <p><strong>총 레코드 수:</strong> <span class="stat-value">${formatCount(stats.totalCount)}</span></p>
+                        <p><strong>Usaged 최소값:</strong> <span class="stat-value">${formatStat(stats.min)}</span></p>
+                        <p><strong>Usaged 최대값:</strong> <span class="stat-value">${formatStat(stats.max)}</span></p>
+                        <p><strong>Usaged 평균:</strong> <span class="stat-value">${formatStat(stats.avg)}</span></p>
+                        <p><strong>Usaged 표준편차:</strong> <span class="stat-value">${formatStat(stats.stddev)}</span></p>
                     `;
                 } else if (statType === 'core') {
                     coreStatsList.classList.remove('hidden');
@@ -505,10 +508,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             const li = document.createElement('li');
                             li.innerHTML = `
                                 <strong>${stat.core}:</strong>
-                                    Min: <span class="stat-value">${stat.min.toFixed(2)}</span>,
-                                    Max: <span class="stat-value">${stat.max.toFixed(2)}</span>,
-                                    Avg: <span class="stat-value">${stat.avg.toFixed(2)}</span>,
-                                    StdDev: <span class="stat-value">${stat.stddev ? stat.stddev.toFixed(2) : 'N/A'}</span>
+                                    Min: <span class="stat-value">${formatStat(stat.min)}</span>,
+                                    Max: <span class="stat-value">${formatStat(stat.max)}</span>,
+                                    Avg: <span class="stat-value">${formatStat(stat.avg)}</span>,
+                                    StdDev: <span class="stat-value">${formatStat(stat.stddev)}</span>
                             `;
                             coreStatsList.appendChild(li);
                         });
@@ -522,10 +525,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             const li = document.createElement('li');
                             li.innerHTML = `
                                 <strong>${stat.task}:</strong>
-                                    Min: <span class="stat-value">${stat.min.toFixed(2)}</span>,
-                                    Max: <span class="stat-value">${stat.max.toFixed(2)}</span>,
-                                    Avg: <span class="stat-value">${stat.avg.toFixed(2)}</span>,
-                                    StdDev: <span class="stat-value">${stat.stddev ? stat.stddev.toFixed(2) : 'N/A'}</span>
+                                    Min: <span class="stat-value">${formatStat(stat.min)}</span>,
+                                    Max: <span class="stat-value">${formatStat(stat.max)}</span>,
+                                    Avg: <span class="stat-value">${formatStat(stat.avg)}</span>,
+                                    StdDev: <span class="stat-value">${formatStat(stat.stddev)}</span>
                             `;
                             taskStatsList.appendChild(li);
                         });
